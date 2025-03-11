@@ -45,19 +45,21 @@ exports.createRate = async (req, res) => {
 // get all Rate
 exports.getAllRate = async (req, res) => {
   try {
-    const [data] = await db.query("SELECT * FROM rate ORDER BY id DESC");
-    if (!data || data.length == 0) {
-      return res.status(200).send({
-        success: true,
-        message: "No Rate found",
-        result: data,
-      });
+    const [data] = await db.query("SELECT * FROM rate_type");
+
+    for (const rateType of data) {
+      const rateID = rateType.id;
+
+      const [rate] = await db.query("SELECT * FROM rate WHERE rate_type =?", [
+        rateID,
+      ]);
+
+      rateType.rate = rate;
     }
 
     res.status(200).send({
       success: true,
       message: "Get all Rate",
-      totalRate: data.length,
       data,
     });
   } catch (error) {
@@ -68,6 +70,33 @@ exports.getAllRate = async (req, res) => {
     });
   }
 };
+
+// // get all Rate
+// exports.getAllRate = async (req, res) => {
+//   try {
+//     const [data] = await db.query("SELECT * FROM rate ORDER BY id DESC");
+//     if (!data || data.length == 0) {
+//       return res.status(200).send({
+//         success: true,
+//         message: "No Rate found",
+//         result: data,
+//       });
+//     }
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Get all Rate",
+//       totalRate: data.length,
+//       data,
+//     });
+//   } catch (error) {
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in Get All Rate",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // get single Rate
 exports.getSingleRate = async (req, res) => {

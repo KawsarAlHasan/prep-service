@@ -160,6 +160,7 @@ exports.getAllInventoryForUser = async (req, res) => {
 
     // Pagination Parameters
     let { page, limit, start_date, end_date } = req.query;
+
     page = parseInt(page) || 1; // Default page 1
     limit = parseInt(limit) || 10; // Default limit 10
     const offset = (page - 1) * limit;

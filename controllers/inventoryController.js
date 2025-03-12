@@ -124,9 +124,10 @@ exports.getAllInventory = async (req, res) => {
 
     // Fetch paginated data with filters
     const [data] = await db.query(
-      `SELECT inventory.*, rate_type.rate_type as rate_type_name 
+      `SELECT inventory.*, rate_type.rate_type as rate_type_name, users.first_name, users.last_name, users.email 
        FROM inventory 
        LEFT JOIN rate_type ON inventory.rate_type = rate_type.id 
+       LEFT JOIN users ON inventory.user_id = users.id 
        ${whereClause} 
        ORDER BY inventory.id DESC 
        LIMIT ? OFFSET ?`,
@@ -347,7 +348,7 @@ exports.updateInventoryBoxAndDimension = async (req, res) => {
     // Success response
     res.status(200).send({
       success: true,
-      message: "Box & Dimention updated successfully",
+      message: "Box & Dimention updated successfully!",
     });
   } catch (error) {
     res.status(500).send({

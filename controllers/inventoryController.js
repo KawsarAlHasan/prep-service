@@ -339,11 +339,10 @@ exports.updateInventoryBoxAndDimension = async (req, res) => {
     }
 
     // Execute the update query
-    await db.query("UPDATE inventory SET box=?, dimension=? WHERE id = ?", [
-      box || preData[0].box,
-      dimension || preData[0].dimension,
-      id,
-    ]);
+    await db.query(
+      "UPDATE inventory SET box=?, dimension=?, is_box_di=? WHERE id = ?",
+      [box || preData[0].box, dimension || preData[0].dimension, 1, id]
+    );
 
     // Success response
     res.status(200).send({

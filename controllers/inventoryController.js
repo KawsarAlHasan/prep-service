@@ -18,6 +18,51 @@ exports.createInventory = async (req, res) => {
     for (let i = 0; i < inventories.length; i++) {
       const singleInventory = inventories[i];
 
+      // Generate unique transaction no
+      async function generateUniqueTransactionNo(length, batchSize = 9) {
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        // Helper function to generate a single random code
+        function generateRandomCode(length) {
+          let result = "";
+          for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * characters.length);
+            result += characters[randomIndex];
+          }
+          return result;
+        }
+
+        let uniqueCode = null;
+
+        while (!uniqueCode) {
+          // Step 1: Generate a batch of random codes
+          const codesBatch = [];
+          for (let i = 0; i < batchSize; i++) {
+            codesBatch.push(generateRandomCode(length));
+          }
+
+          // Step 2: Check these codes against the database
+          const placeholders = codesBatch.map(() => "?").join(",");
+          const [existingCodes] = await db.query(
+            `SELECT transaction_no FROM inventory WHERE transaction_no IN (${placeholders})`,
+            codesBatch
+          );
+
+          // Step 3: Filter out codes that already exist in the database
+          const existingCodeSet = new Set(
+            existingCodes.map((row) => row.transaction_no)
+          );
+
+          // Step 4: Find the first code that doesn't exist in the database
+          uniqueCode = codesBatch.find((code) => !existingCodeSet.has(code));
+        }
+
+        return uniqueCode;
+      }
+
+      // Generate unique transaction_no (if not provided)
+      const transaction_no = await generateUniqueTransactionNo(9);
+
       const { name, date, amount, quantity, rate_type } = singleInventory;
 
       let imagePath = uploadedImages[i]
@@ -26,7 +71,7 @@ exports.createInventory = async (req, res) => {
 
       // Save to database
       const [result] = await db.query(
-        "INSERT INTO inventory (user_id, item_name, image, date, amount, quantity, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO inventory (user_id, item_name, image, date, amount, quantity, transaction_no, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
           user_id,
           name || "",
@@ -34,6 +79,7 @@ exports.createInventory = async (req, res) => {
           date || "",
           amount || 0,
           quantity || 0,
+          transaction_no,
           rate_type,
         ]
       );
@@ -52,143 +98,109 @@ exports.createInventory = async (req, res) => {
   }
 };
 
-// // Create Inventory
-// exports.createInventory = async (req, res) => {
-//   try {
-//     const user_id = 1;
-
-//     const { inventories } = req.body;
-
-//     if (!inventories || !Array.isArray(inventories)) {
-//       return res.status(400).send({
-//         success: false,
-//         message: "Invalid inventories data",
-//       });
-//     }
-
-//     const uploadedImages = req.files; // All uploaded images
-
-//     for (let i = 0; i < inventories.length; i++) {
-//       const singleInventory = inventories[i];
-
-//       const { item_name, amount, quantity, rate_type, date, transaction_no } =
-//         singleInventory;
-
-//       let image = uploadedImages[i]
-//         ? `/public/images/${uploadedImages[i].filename}`
-//         : "";
-
-//       const [result] = await db.query(
-//         "INSERT INTO inventory (user_id, item_name, image, amount, quantity, rate_type, date, transaction_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-//         [
-//           user_id,
-//           item_name || "",
-//           image,
-//           amount || 0,
-//           quantity || 0,
-//           rate_type || "",
-//           date || "",
-//           transaction_no || "",
-//         ]
-//       );
-
-//       if (result.affectedRows === 0) {
-//         return res.status(500).send({
-//           success: false,
-//           message: "Failed to insert Inventory",
-//         });
-//       }
-//     }
-
-//     res.status(200).send({
-//       success: true,
-//       message: "Inventory inserted successfully!",
-//     });
-//   } catch (error) {
-//     res.status(500).send({
-//       success: false,
-//       message: "Error inserting Inventory",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// // create inventory
-// exports.createInventory = async (req, res) => {
-//   try {
-//     const user_id = req.decodedUser.id;
-//     const {
-//       item_name,
-//       amount,
-//       quantity,
-//       rate_type,
-//       date,
-//       status,
-//       transaction_no,
-//     } = req.body;
-
-//     const images = req.file;
-//     let image = "";
-//     if (images && images.path) {
-//       image = `/public/images/${images.filename}`;
-//     }
-
-//     // Insert inventory into the database
-//     const [result] = await db.query(
-//       "INSERT INTO inventory (user_id, item_name, image, amount, quantity, rate_type, date, status, transaction_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-//       [
-//         user_id,
-//         item_name || "",
-//         image,
-//         amount || 0,
-//         quantity || 0,
-//         rate_type || "",
-//         date || "",
-//         status || "",
-//         transaction_no || "",
-//       ]
-//     );
-
-//     // Check if the insertion was successful
-//     if (result.affectedRows === 0) {
-//       return res.status(500).send({
-//         success: false,
-//         message: "Failed to insert Inventory, please try again",
-//       });
-//     }
-
-//     // Send success response
-//     res.status(200).send({
-//       success: true,
-//       message: "Inventory inserted successfully",
-//       InventoryID: result.insertId,
-//     });
-//   } catch (error) {
-//     res.status(500).send({
-//       success: false,
-//       message: "An error occurred while inserting the Inventory",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// get all Inventory
+// Get all Inventory with Pagination & Date Filtering
 exports.getAllInventory = async (req, res) => {
   try {
-    const [data] = await db.query("SELECT * FROM inventory ORDER BY id DESC");
-    if (!data || data.length == 0) {
-      return res.status(200).send({
-        success: true,
-        message: "No inventory found",
-        result: data,
-      });
+    // Pagination Parameters
+    let { page, limit, start_date, end_date } = req.query;
+    page = parseInt(page) || 1; // Default page 1
+    limit = parseInt(limit) || 10; // Default limit 10
+    const offset = (page - 1) * limit;
+
+    // Building the WHERE clause
+    let whereClause = "";
+    let queryParams = [];
+
+    if (start_date && end_date) {
+      whereClause += " WHERE date BETWEEN ? AND ?";
+      queryParams.push(start_date, end_date);
     }
+
+    // Get total count with filters
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) as total FROM inventory ${whereClause}`,
+      queryParams
+    );
+
+    // Fetch paginated data with filters
+    const [data] = await db.query(
+      `SELECT inventory.*, rate_type.rate_type as rate_type_name 
+       FROM inventory 
+       LEFT JOIN rate_type ON inventory.rate_type = rate_type.id 
+       ${whereClause} 
+       ORDER BY inventory.id DESC 
+       LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
+    );
 
     res.status(200).send({
       success: true,
-      message: "Get all Inventory",
-      totalInventory: data.length,
-      data,
+      message: "All Inventory",
+      pagination: {
+        total: total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+      data: data,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Error in Get All Inventory",
+      error: error.message,
+    });
+  }
+};
+
+/// get all Inventory with Pagination & Date Filtering
+exports.getAllInventoryForUser = async (req, res) => {
+  try {
+    const user_id = req.decodedUser.id;
+
+    // Pagination Parameters
+    let { page, limit, start_date, end_date } = req.query;
+    page = parseInt(page) || 1; // Default page 1
+    limit = parseInt(limit) || 10; // Default limit 10
+    const offset = (page - 1) * limit;
+
+    // Building the WHERE clause
+    let whereClause = "WHERE user_id = ?";
+    let queryParams = [user_id];
+
+    if (start_date && end_date) {
+      whereClause += " AND date BETWEEN ? AND ?";
+      queryParams.push(start_date, end_date);
+    }
+
+    // Get total count with filters
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) as total FROM inventory ${whereClause}`,
+      queryParams
+    );
+
+    // Fetch paginated data with filters
+
+    const [data] = await db.query(
+      `SELECT inventory.*, rate_type.rate_type as rate_type_name 
+       FROM inventory 
+       LEFT JOIN rate_type ON inventory.rate_type = rate_type.id 
+       ${whereClause} 
+       ORDER BY inventory.id DESC 
+       LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
+    );
+
+    res.status(200).send({
+      success: true,
+      message: "All Inventory",
+      pagination: {
+        total: total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+      data: data,
     });
   } catch (error) {
     res.status(500).send({
@@ -291,7 +303,7 @@ exports.uploadshippingLabelPDF = async (req, res) => {
     const images = req.file;
     let pdfUpload = preData[0].pdf;
     if (images && images.path) {
-      pdfUpload = `/public/images/${images.filename}`;
+      pdfUpload = `/public/files/${images.filename}`;
     }
 
     // Execute the update query

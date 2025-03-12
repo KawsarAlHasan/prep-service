@@ -10,8 +10,10 @@ const {
   updateInventoryStatus,
   uploadshippingLabelPDF,
   updateInventory,
+  getAllInventoryForUser,
 } = require("../controllers/inventoryController");
 const uploadImage = require("../middleware/imagesUploader");
+const uploadFiles = require("../middleware/filesUploader");
 
 const router = express.Router();
 
@@ -23,12 +25,13 @@ router.post(
 );
 
 router.get("/all", getAllInventory);
+router.get("/", verifyUser, getAllInventoryForUser);
 router.get("/:id", getSingleInventory);
 router.put("/update/:id", uploadImage.single("image"), updateInventory);
 router.put("/box-dimension/:id", updateInventoryBoxAndDimension);
 router.put(
   "/shipping-pdf/:id",
-  uploadImage.single("pdf"),
+  uploadFiles.single("pdf"),
   uploadshippingLabelPDF
 );
 router.put("/status/:id", updateInventoryStatus);

@@ -2,7 +2,7 @@ const multer = require("multer");
 const path = require("path");
 
 const storage = multer.diskStorage({
-  destination: "public/images",
+  destination: "public/files",
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const cleanFileName = file.originalname.replace(/\s+/g, "_");
@@ -10,7 +10,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const uploadImage = multer({
+const uploadFiles = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
     const supportedImage = /png|jpg|jpeg|pdf/;
@@ -19,7 +19,7 @@ const uploadImage = multer({
     if (supportedImage.test(extension)) {
       cb(null, true);
     } else {
-      cb(new Error("Must be png/jpg/jpeg image"));
+      cb(new Error("Must be png/jpg/jpeg/pdf image"));
     }
   },
   limits: {
@@ -27,4 +27,4 @@ const uploadImage = multer({
   },
 });
 
-module.exports = uploadImage;
+module.exports = uploadFiles;

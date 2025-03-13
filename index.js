@@ -28,6 +28,7 @@ app.use("/api/v1/admin", require("./router/adminRoute"));
 app.use("/api/v1/user", require("./router/userRoute"));
 app.use("/api/v1/rate", require("./router/rateRout"));
 app.use("/api/v1/inventory", require("./router/inventoryRoute"));
+app.use("/api/v1/return", require("./router/returnProductRoute"));
 
 mySqlPool
   .query("SELECT 1")

@@ -10,6 +10,7 @@ const {
   updateProfileUser,
   updateUserPassword,
   deleteUser,
+  updateUserWithId,
 } = require("../controllers/userController");
 const verifyUser = require("../middleware/verifyUser");
 const verifyAdmin = require("../middleware/verifyAdmin");
@@ -28,6 +29,7 @@ router.get("/me", verifyUser, getMeUser);
 router.get("/all", verifyAdmin, getAllUsers);
 router.get("/:id", verifyAdmin, getSingleUser);
 router.put("/update", verifyUser, updateUser);
+router.put("/update/:id", updateUserWithId);
 router.put(
   "/update/profile",
   uploadImage.single("profile_pic"),

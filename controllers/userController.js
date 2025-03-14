@@ -288,6 +288,79 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+// update user
+exports.updateUserWithId = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    if (!userId) {
+      return res.status(201).send({
+        success: false,
+        message: "User ID is required in params",
+      });
+    }
+
+    const [userPreData] = await db.query(`SELECT * FROM users WHERE id=? `, [
+      userId,
+    ]);
+    if (!userPreData || userPreData.length === 0) {
+      return res.status(201).send({
+        success: false,
+        message: "No user found",
+      });
+    }
+
+    // Extract data from the request body
+    const {
+      first_name,
+      last_name,
+      phone,
+      email,
+      birth_day,
+      street_address,
+      city,
+      postal_or_zip_code,
+      state_or_region,
+      country,
+    } = req.body;
+
+    // Update the user data in the database
+    const [data] = await db.query(
+      `UPDATE users SET first_name=?, last_name=?, phone=?, email=?, street_address=?, birth_day=?, city=?, postal_or_zip_code=?, state_or_region=?, country=? WHERE id = ?`,
+      [
+        first_name || userPreData.first_name,
+        last_name || userPreData.last_name,
+        phone || userPreData.phone,
+        email || userPreData.email,
+        street_address || userPreData.street_address,
+        birth_day || userPreData.birth_day,
+        city || userPreData.city,
+        postal_or_zip_code || userPreData.postal_or_zip_code,
+        state_or_region || userPreData.state_or_region,
+        country || userPreData.country,
+        userId,
+      ]
+    );
+
+    if (!data) {
+      return res.status(500).send({
+        success: false,
+        message: "Error in updating user",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "User updated successfully",
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Error in updating user",
+      error: error.message,
+    });
+  }
+};
+
 // update profile user
 exports.updateProfileUser = async (req, res) => {
   try {
